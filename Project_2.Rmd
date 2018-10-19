@@ -59,6 +59,12 @@ debut.year=year(batting$debut)
 
 
 ```
-
+#Split data into test and train datasets
+set.seed(123)
+a <- 0.7*nrow(nonrookies)
+summary(nonrookies)
+tmp.random<-sample(1:nrow(nonrookies))
+training<-nonrookies[tmp.random[1:a],]
+training
 
 
