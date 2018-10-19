@@ -1,0 +1,64 @@
+---
+title: "Project_2"
+author: "Lee Panter, Arlin Tawzer, Nick Weaver"
+date: "10/15/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lubridate)
+```
+
+```{r}
+P2WD="/Users/lee/Desktop/MATH_6388/Project_2"
+setwd(P2WD)
+```
+
+```{r}
+batting=read.csv("/Users/lee/Desktop/MATH_6388/Project_2/merged_batting.csv")
+```
+
+```{r}
+summary(batting)
+(names=names(batting))
+names.list=as.list(names)
+
+
+
+plot(H_Season~HR_Season, data=batting)
+plot(salary~birthYear , data=batting)
+plot(salary~birthMonth , data=batting)
+plot(salary~birthDay , data=batting)
+plot(salary~birthCountry, data=batting)
+plot(salary~bats , data=batting)
+plot(salary~debut , data=batting)
+plot(salary~finalGame , data=batting)
+plot(salary~R_Season , data=batting)
+plot(salary~H_season, data=batting)
+plot(salary~X2B_Season, data=batting)
+plot(salary~X3B_Season, data=batting)
+plot(salary~lgId, data=batting)
+plot(salary~G_Post, data=batting)
+plot(salary~AB_Post, data=batting)
+plot(salary~stint , data=batting)
+plot(salary~teamID_y , data=batting)
+plot(salary~lgID_y , data=batting)
+plot(salary~HR_Season , data=batting)
+plot(salary~RBI_Season , data=batting)
+plot(salary~SB_Season , data=batting)
+plot(salary~CS_Season , data=batting)
+
+rookie=subset(batting, salary==507500, select = X:GIDP_Post)
+
+```
+
+```{r}
+debut.date=as.character(batting$)
+debut.year=year(batting$debut)
+
+
+```
+
+
+
