@@ -4,67 +4,193 @@ author: "Lee Panter, Arlin Tawzer, Nick Weaver"
 date: "10/15/2018"
 output: pdf_document
 ---
-
+Markdown and Knitr options
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(lubridate)
 ```
 
+Working directories
 ```{r}
 P2WD="/Users/lee/Desktop/MATH_6388/Project_2"
 setwd(P2WD)
 ```
 
+
+Libraries & Packages:
+
+- lubridate
 ```{r}
-batting=read.csv("/Users/lee/Desktop/MATH_6388/Project_2/merged_batting.csv")
+library(lubridate)
+library(leaps)
+library(car)
 ```
 
+Data Dependencies:
+
+- nonrookies.rda
+  -- Note: this is a pre-altered dataset that has had rookies and several variables merged and removed.
 ```{r}
-summary(batting)
-(names=names(batting))
-names.list=as.list(names)
-
-
-
-plot(H_Season~HR_Season, data=batting)
-plot(salary~birthYear , data=batting)
-plot(salary~birthMonth , data=batting)
-plot(salary~birthDay , data=batting)
-plot(salary~birthCountry, data=batting)
-plot(salary~bats , data=batting)
-plot(salary~debut , data=batting)
-plot(salary~finalGame , data=batting)
-plot(salary~R_Season , data=batting)
-plot(salary~H_season, data=batting)
-plot(salary~X2B_Season, data=batting)
-plot(salary~X3B_Season, data=batting)
-plot(salary~lgId, data=batting)
-plot(salary~G_Post, data=batting)
-plot(salary~AB_Post, data=batting)
-plot(salary~stint , data=batting)
-plot(salary~teamID_y , data=batting)
-plot(salary~lgID_y , data=batting)
-plot(salary~HR_Season , data=batting)
-plot(salary~RBI_Season , data=batting)
-plot(salary~SB_Season , data=batting)
-plot(salary~CS_Season , data=batting)
-
-rookie=subset(batting, salary==507500, select = X:GIDP_Post)
-
+load(file = "/Users/lee/Desktop/MATH_6388/Project_2/nonrookies.rda")
+dat=nonrookies
+rm(nonrookies)
 ```
 
+Initial Data Analysis
 ```{r}
-debut.date=as.character(batting$)
-debut.year=year(batting$debut)
-
-
+(names=names(dat))
+summary(dat)
 ```
-#Split data into test and train datasets
+
+Removal of non-quantitative predictors
+```{r}
+dat <- subset(dat, select = -c(yearID,teamID,lgID,playerID,
+                                             birthYear,birthMonth,birthDay,
+                                             birthCountry,birthState,birthCity,
+                                             deathYear,deathMonth,deathDay,
+                                             deathCountry,deathState,deathCity,
+                                             nameFirst,nameLast,nameGiven,bats,
+                                             throws,debut,finalGame,retroID,
+                                             bbrefID,finalgame_year))
+```
+
+Set values of NA salary to 0, remove 0-salaried players
+```{r}
+for (i in 1:nrow(dat)){
+  temp.sal.16 <- dat$salary_2016[i]
+  temp.sal.15 <- dat$salary_2015[i]
+  if (is.na(temp.sal.16))
+  {dat$salary_2016[i] = 0}
+  else if (is.na(temp.sal.15))
+  {dat$salary_2015[i]=0}
+}
+dat=subset(dat, (salary_2016 != 0) & (salary_2015 != 0), select = index:GIDP)
+
+rm(i); rm(temp.sal.15); rm(temp.sal.16)
+```
+
+
+Split data into training and test sets
+```{r}
 set.seed(123)
-a <- 0.7*nrow(nonrookies)
-summary(nonrookies)
-tmp.random<-sample(1:nrow(nonrookies))
-training<-nonrookies[tmp.random[1:a],]
-training
+a <- 0.7*nrow(dat)
+tmp.random<-sample(1:nrow(dat))
+training<-dat[tmp.random[1:a],]
+dim(training)
+
+test=dat[-tmp.random[1:a],]
+dim(test)
+```
+
+Create OLS model
+```{r}
+lmod.train.15=lm(salary_2015~.-salary_2016, data = training)
+lmod.train.15.s=summary(lmod.train.15)
+```
+
+regsubsets
+```{r}
+regfit.train.15=regsubsets(salary_2015~.-salary_2016, data = training, nvmax = 21)
+regfit.train.15.s=summary(regfit.train.15)
+regfit.train.15.s$which
+```
+
+Define and Plot AIC
+```{r}
+n.train=dim(training)[1]
+AIC=n.train*log(regfit.train.15.s$rss/n.train)+(1:20)*2
+plot(AIC ~ I(1:20), ylab="AIC", xlab="Number of Predictors")
+
+which.min(AIC) 
+#The Number of predictors that minimizes AIC is 9
+```
+
+
+Define and Plot BIC
+```{r}
+BIC=regfit.train.15.s$bic
+plot(BIC ~ I(1:20), ylab="BIC", xlab="Number of Predictors")
+which.min(BIC)
+#The number of predictors that minimizes BIC is 6
+```
+
+
+Define and Plot Cp
+```{r}
+cp=regfit.train.15.s$cp
+plot(cp~I(1:20), ylab="Cp", xlab="Number of Predictors")
+which.min(cp)
+#The number of predictors that minimizes Cp is 9
+```
+
+
+Define New "Best" Functions according to the best 6 and 9 predictors
+
+* Best six are: 
+
+  - weight
+  - G
+  - AB
+  - H
+  - RBI
+  - SH
+  
+* Best nine are:
+
+  - weight
+  - height
+  - G
+  - AB
+  - H
+  - RBI
+  - HBP
+  - SH
+  - GIDP
+  
+```{r}
+lm.Acp=lm(salary_2015~weight+G+AB+H+RBI+SH, data = training)
+lm.BIC=lm(salary_2015~weight+height+G+AB+H+RBI+HBP+SH+GIDP, data=training)
+```
+
+
+Calculate Predicted values for test set
+```{r}
+pred.Acp.2015=predict.lm(lm.Acp, newdata = test)
+pred.BIC.2015=predict.lm(lm.BIC, newdata = test)
+
+SE.pred.Acp.2015=c()
+SE.pred.BIC.2015=c()
+
+for (i in 1:length(pred.Acp.2015))
+{
+  SE.pred.Acp.2015[i]=(test$salary_2015[i]-pred.Acp.2015[i])^2
+  SE.pred.BIC.2015[i]=(test$salary_2015[i]-pred.BIC.2015[i])^2
+}
+
+(MSE.Acp.2015=sum(SE.pred.Acp.2015)/length(pred.Acp.2015))
+(MSE.BIC.2015=sum(SE.pred.BIC.2015)/length(pred.BIC.2015))
+
+#The smaller of the MSE measurements is for BIC (NOT that it is any good)
+
+```
+
+
+We now apply this model (BIC-selected variable model) towards prediction of the 2016 salaries, and calculate a loss function on this verification set:
+
+```{r}
+dat2=dat[,-3]
+dat2$salary_2015=dat$salary_2016
+pred.BIC.2016=predict.lm(lm.BIC, newdata = dat2)
+
+SE.pred.BIC.2016=c()
+
+for (i in 1:length(pred.BIC.2016))
+{
+  SE.pred.BIC.2016[i]=(dat$salary_2016[i]-pred.BIC.2016[i])^2
+}
+
+(MSE.BIC.2016=sum(SE.pred.BIC.2016)/length(pred.BIC.2016))
+
+```
+
 
 
